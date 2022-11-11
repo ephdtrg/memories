@@ -356,7 +356,7 @@ export default class Viewer extends Mixins(GlobalMixin) {
 
     // Video support
     new PsVideo(this.photoswipe, {
-      videoAttributes: { controls: "", playsinline: "", preload: "none" },
+      videoAttributes: { playsinline: "", preload: "metadata", autoplay: "" },
       autoplay: true,
       preventDragOffset: 40,
     });
@@ -861,6 +861,27 @@ export default class Viewer extends Mixins(GlobalMixin) {
     .pswp__button--arrow {
       opacity: 0 !important;
     }
+  }
+}
+</style>
+
+<style lang="less">
+// shaka-player/ui/controls.less
+@import "shaka-player/ui/less/general.less";
+@import "shaka-player/ui/less/containers.less";
+@import "./video/buttons.less";
+@import "shaka-player/ui/less/range_elements.less";
+@import "shaka-player/ui/less/spinner.less";
+@import "shaka-player/ui/less/other_elements.less";
+@import "shaka-player/ui/less/overflow_menu.less";
+@import "shaka-player/ui/less/ad_controls.less";
+@import "shaka-player/ui/less/tooltip.less";
+
+@import "video/material-icons-rounded-all-400-normal-subset.less";
+
+.shaka-controls-container {
+  input {
+    min-height: unset;
   }
 }
 </style>
