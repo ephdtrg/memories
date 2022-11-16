@@ -89,7 +89,7 @@ class ApiBase extends Controller
     }
 
     /** Get the Folder object relevant to the request */
-    protected function getRequestFolder()
+    protected function getRequestFolders()
     {
         // Albums have no folder
         if ($this->request->getParam('album')) {
@@ -103,7 +103,7 @@ class ApiBase extends Controller
                 throw new \Exception('Share not found or invalid');
             }
 
-            return $share;
+            return [$share];
         }
 
         // Anything else needs a user
@@ -113,29 +113,38 @@ class ApiBase extends Controller
         }
         $uid = $user->getUID();
 
-        $folder = null;
+        $folders = [];
         $folderPath = $this->request->getParam('folder');
         $forcedTimelinePath = $this->request->getParam('timelinePath');
         $userFolder = $this->rootFolder->getUserFolder($uid);
 
         if (null !== $folderPath) {
-            $folder = $userFolder->get($folderPath);
+            $folders[] = $userFolder->get($folderPath);
         } elseif (null !== $forcedTimelinePath) {
-            $folder = $userFolder->get($forcedTimelinePath);
+            $folders[] = $userFolder->get(Exif::removeExtraSlash($forcedTimelinePath));
         } else {
-            $configPath = Exif::removeExtraSlash(Exif::getPhotosPath($this->config, $uid));
-            $folder = $userFolder->get($configPath);
+            $configPaths = Exif::removeExtraSlash(Exif::getPhotosPath($this->config, $uid));
+            $configPaths = explode(';', $configPaths);
+            foreach ($configPaths as $path) {
+                $folder = $userFolder->get($path);
+
+                if (!$folder instanceof Folder) {
+                    throw new \Exception('Folder not found');
+                }
+
+                if (!($folder->getPermissions() & \OCP\Constants::PERMISSION_READ)) {
+                    throw new \Exception('Folder not readable');
+                }
+
+                $folders[] = $folder;
+            }
         }
 
-        if (!$folder instanceof Folder) {
-            throw new \Exception('Folder not found');
+        if (0 === \count($folders)) {
+            throw new \Exception('No valid folders found');
         }
 
-        if (!($folder->getPermissions() & \OCP\Constants::PERMISSION_READ)) {
-            throw new \Exception('Folder not readable');
-        }
-
-        return $folder;
+        return $folders;
     }
 
     /**

@@ -109,18 +109,18 @@ trait TimelineQueryDays
     /**
      * Get the day response from the database for the timeline.
      *
-     * @param null|Folder $folder          The folder to get the day from
-     * @param string      $uid             The user id
-     * @param int[]       $day_ids         The day ids to fetch
-     * @param bool        $recursive       If the query should be recursive
-     * @param bool        $archive         If the query should include only the archive folder
-     * @param array       $queryTransforms The query transformations to apply
-     * @param mixed       $day_ids
+     * @param null|Folder[] $folders         The folders to get the day from
+     * @param string        $uid             The user id
+     * @param int[]         $day_ids         The day ids to fetch
+     * @param bool          $recursive       If the query should be recursive
+     * @param bool          $archive         If the query should include only the archive folder
+     * @param array         $queryTransforms The query transformations to apply
+     * @param mixed         $day_ids
      *
      * @return array An array of day responses
      */
     public function getDay(
-        &$folder,
+        &$folders,
         string $uid,
         $day_ids,
         bool $recursive,
@@ -140,8 +140,8 @@ trait TimelineQueryDays
         ;
 
         // JOIN with filecache for existing files
-        $query = $this->joinFilecache($query, $folder, $recursive, $archive);
-        $query->addSelect('f.etag', 'f.path', 'f.name AS basename');
+        $query = $this->joinFilecache($query, $folders, $recursive, $archive);
+        $query->addSelect('f.etag', 'f.name AS basename');
 
         // JOIN with mimetypes to get the mimetype
         $query->join('f', 'mimetypes', 'mimetypes', $query->expr()->eq('f.mimetype', 'mimetypes.id'));
@@ -169,7 +169,7 @@ trait TimelineQueryDays
         $rows = $cursor->fetchAll();
         $cursor->closeCursor();
 
-        return $this->processDay($rows, $uid, $folder);
+        return $this->processDay($rows, $uid);
     }
 
     /**
@@ -190,40 +190,11 @@ trait TimelineQueryDays
     /**
      * Process the single day response.
      *
-     * @param array       $day
-     * @param string      $uid    User or blank if not logged in
-     * @param null|Folder $folder
+     * @param array  $day
+     * @param string $uid User or blank if not logged in
      */
-    private function processDay(&$day, $uid, $folder)
+    private function processDay(&$day, $uid)
     {
-        $basePath = '#__#__#';
-        $davPath = '';
-        if (null !== $folder) {
-            // No way to get the internal path from the folder
-            $query = $this->connection->getQueryBuilder();
-            $query->select('path')
-                ->from('filecache')
-                ->where($query->expr()->eq('fileid', $query->createNamedParameter($folder->getId(), IQueryBuilder::PARAM_INT)))
-            ;
-            $path = $query->executeQuery()->fetchOne();
-            $basePath = $path ?: $basePath;
-
-            // Get user facing path
-            // getPath looks like /user/files/... but we want /files/user/...
-            // Split at / and swap these
-            // For public shares, we just give the relative path
-            if (!empty($uid)) {
-                $actualPath = $folder->getPath();
-                $actualPath = explode('/', $actualPath);
-                if (\count($actualPath) >= 3) {
-                    $tmp = $actualPath[1];
-                    $actualPath[1] = $actualPath[2];
-                    $actualPath[2] = $tmp;
-                    $davPath = implode('/', $actualPath);
-                }
-            }
-        }
-
         foreach ($day as &$row) {
             // We don't need date taken (see query builder)
             unset($row['datetaken']);
@@ -242,14 +213,6 @@ trait TimelineQueryDays
                 $row['isfavorite'] = 1;
             }
             unset($row['categoryid']);
-
-            // Check if path exists and starts with basePath and remove
-            if (isset($row['path']) && !empty($row['path'])) {
-                if (0 === strpos($row['path'], $basePath)) {
-                    $row['filename'] = $davPath.substr($row['path'], \strlen($basePath));
-                }
-                unset($row['path']);
-            }
 
             // All transform processing
             $this->processFace($row);
@@ -280,11 +243,14 @@ trait TimelineQueryDays
      */
     private function addSubfolderJoinParams(
         IQueryBuilder &$query,
-        Folder &$folder,
+        array &$folders,
         bool $archive
     ) {
         // Get storages recursively
-        $topFolderIds = [$folder->getId()];
+        $topFolderIds = [];
+        foreach ($folders as $folder) {
+            $topFolderIds[] = $folder->getId();
+        }
         $mounts = \OC\Files\Filesystem::getMountManager()->findIn($folder->getPath());
         foreach ($mounts as &$mount) {
             $topFolderIds[] = $mount->getStorageRootId();
@@ -299,19 +265,19 @@ trait TimelineQueryDays
      * Inner join with oc_filecache.
      *
      * @param IQueryBuilder $query     Query builder
-     * @param null|Folder   $folder    Either the top folder or null for all
+     * @param null|Folder[] $folders   Either the top folder or null for all
      * @param bool          $recursive Whether to get the days recursively
      * @param bool          $archive   Whether to get the days only from the archive folder
      */
     private function joinFilecache(
         IQueryBuilder &$query,
-        &$folder,
+        &$folders,
         bool $recursive,
         bool $archive
     ) {
         // Join with memories
         $baseOp = $query->expr()->eq('f.fileid', 'm.fileid');
-        if (null === $folder) {
+        if (null === $folders) {
             return $query->innerJoin('m', 'filecache', 'f', $baseOp);
         }
 
@@ -319,11 +285,11 @@ trait TimelineQueryDays
         $pathOp = null;
         if ($recursive) {
             // Join with folders CTE
-            $this->addSubfolderJoinParams($query, $folder, $archive);
+            $this->addSubfolderJoinParams($query, $folders, $archive);
             $query->innerJoin('f', 'cte_folders', 'cte_f', $query->expr()->eq('f.parent', 'cte_f.fileid'));
         } else {
             // If getting non-recursively folder only check for parent
-            $pathOp = $query->expr()->eq('f.parent', $query->createNamedParameter($folder->getId(), IQueryBuilder::PARAM_INT));
+            $pathOp = $query->expr()->eq('f.parent', $query->createNamedParameter($folders[0]->getId(), IQueryBuilder::PARAM_INT));
         }
 
         return $query->innerJoin('m', 'filecache', 'f', $query->expr()->andX(

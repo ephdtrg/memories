@@ -46,14 +46,14 @@ class TagsController extends ApiBase
         }
 
         // If this isn't the timeline folder then things aren't going to work
-        $folder = $this->getRequestFolder();
-        if (null === $folder) {
+        $folders = $this->getRequestFolders();
+        if (null === $folders) {
             return new JSONResponse([], Http::STATUS_NOT_FOUND);
         }
 
         // Run actual query
         $list = $this->timelineQuery->getTags(
-            $folder,
+            $folders,
         );
 
         return new JSONResponse($list, Http::STATUS_OK);
@@ -77,8 +77,8 @@ class TagsController extends ApiBase
         }
 
         // If this isn't the timeline folder then things aren't going to work
-        $folder = $this->getRequestFolder();
-        if (null === $folder) {
+        $folders = $this->getRequestFolders();
+        if (null === $folders) {
             return new JSONResponse([], Http::STATUS_NOT_FOUND);
         }
 
@@ -88,7 +88,7 @@ class TagsController extends ApiBase
         // Run actual query
         $list = $this->timelineQuery->getTagPreviews(
             $tagName,
-            $folder,
+            $folders,
         );
 
         return new JSONResponse($list, Http::STATUS_OK);

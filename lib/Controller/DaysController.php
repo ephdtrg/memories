@@ -42,10 +42,10 @@ class DaysController extends ApiBase
         $uid = $this->getUid();
 
         // Get the folder to show
-        $folder = null;
+        $folders = null;
 
         try {
-            $folder = $this->getRequestFolder();
+            $folders = $this->getRequestFolders();
         } catch (\Exception $e) {
             return new JSONResponse(['message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
         }
@@ -53,7 +53,7 @@ class DaysController extends ApiBase
         // Run actual query
         try {
             $list = $this->timelineQuery->getDays(
-                $folder,
+                $folders,
                 $uid,
                 $this->isRecursive(),
                 $this->isArchive(),
@@ -111,10 +111,10 @@ class DaysController extends ApiBase
         }
 
         // Get the folder to show
-        $folder = null;
+        $folders = null;
 
         try {
-            $folder = $this->getRequestFolder();
+            $folders = $this->getRequestFolders();
         } catch (\Exception $e) {
             return new JSONResponse(['message' => $e->getMessage()], Http::STATUS_NOT_FOUND);
         }
@@ -127,7 +127,7 @@ class DaysController extends ApiBase
         // Run actual query
         try {
             $list = $this->timelineQuery->getDay(
-                $folder,
+                $folders,
                 $uid,
                 $dayIds,
                 $this->isRecursive(),
