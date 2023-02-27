@@ -755,7 +755,7 @@ export default defineComponent({
     getItemData(photo: IPhoto) {
       const sw = Math.floor(screen.width * devicePixelRatio);
       const sh = Math.floor(screen.height * devicePixelRatio);
-      let previewUrl = getPreviewUrl(photo, false, [sw, sh]);
+      let previewUrl = getDownloadLink(photo);
 
       const isvideo = photo.flag & this.c.FLAG_IS_VIDEO;
 
