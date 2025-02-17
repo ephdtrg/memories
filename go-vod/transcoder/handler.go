@@ -204,7 +204,7 @@ func (h *Handler) removeManager(streamid string) {
 }
 
 func (h *Handler) Start() int {
-	log.Println("Starting go-vod " + h.c.Version + " on " + h.c.Bind)
+	log.Println("Starting go-vod (fork) " + h.c.Version + " on " + h.c.Bind)
 	h.server = &http.Server{Addr: h.c.Bind, Handler: h}
 
 	go func() {
