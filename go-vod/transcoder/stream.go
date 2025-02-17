@@ -374,7 +374,7 @@ func (s *Stream) transcodeArgs(startAt float64, isHls bool) []string {
 		args = append(args, strings.Split(extra, " ")...)
 	} else if s.c.NVENC {
 		CV = ENCODER_NVENC
-		extra := "-hwaccel cuda"
+		extra := "-hwaccel cuda -hwaccel_output_format cuda -c:v h264_cuvid"
 		args = append(args, strings.Split(extra, " ")...)
 	}
 
